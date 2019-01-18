@@ -3,11 +3,13 @@
 import time
 import threading
 
-# import RPi.GPIO as GPIO
-import GPIOMock as GPIO
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    import GPIOMock as GPIO
 GPIO.setmode(GPIO.BCM)
 
-segment_ports = [14,4,23,8,7,10,18,25]
+segment_ports = [14,15,18,23,24,25,8]
 cathode_ports = [12,16]
 # Number light pattern
 character_pattern = {
@@ -29,7 +31,7 @@ class SevenSegmentDisplay:
         self.segment_ports = segment_ports
         GPIO.setup(common_port, GPIO.OUT)
         for p in self.segment_ports:
-	        print(p)
+            print(p)
             GPIO.setup(p, GPIO.OUT)
         self.hideCharacter()
 
@@ -49,7 +51,7 @@ class SevenSegmentDisplay:
 
         pattern = character_pattern[char]
         for s, p in zip(pattern, self.segment_ports):
-            GPIO.output(p, s == 0)
+            GPIO.output(p, s == 1)
 
     def hideCharacter(self):
         GPIO.output(self.common_port, True)
@@ -62,7 +64,7 @@ class NumberDisplay(threading.Thread):
         super(NumberDisplay, self).__init__()
         self.lock = threading.Lock()
         self.daemon = True
-        self.interval = 0.1
+        self.interval = 0.01
         self.characters = ""
         self.seven_segments = []
         for p in cathode_ports:
@@ -72,6 +74,10 @@ class NumberDisplay(threading.Thread):
 
         #self.run()
         self.start()
+
+    def stop(self):
+        for s in self.seven_segments:
+            s.hideCharacter()    
 
     def run(self):
         while True:
@@ -90,20 +96,19 @@ class NumberDisplay(threading.Thread):
 
 
     def set_num(self, num):
+        self.set_char(str(num))
+
+    def set_char(self, characters):
+        print("set char: " + characters)
         with self.lock:
-            self.characters = str(num)
+            self.characters = characters
 
 
 if __name__ == "__main__":
     nd = NumberDisplay()
-    # nd.start()
-
-    time.sleep(1)
-    nd.set_num(3)
-    time.sleep(1)
-    nd.set_num(1234)
-    time.sleep(1)
-
-    for i in range(100):
-        nd.set_num(i)
-        time.sleep(1)
+    try:
+        for i in range(100):
+            nd.set_num(i)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        nd.stop()
