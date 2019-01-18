@@ -1,11 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import time
 import threading
 
 # import RPi.GPIO as GPIO
 import GPIOMock as GPIO
+GPIO.setmode(GPIO.BCM)
 
-segment_ports = [11,4,23,8,7,10,18,25]
-cathode_ports = [1,2]
+segment_ports = [14,4,23,8,7,10,18,25]
+cathode_ports = [12,16]
 # Number light pattern
 character_pattern = {
     ' ':(0,0,0,0,0,0,0),
@@ -24,15 +27,22 @@ class SevenSegmentDisplay:
     def __init__(self, common_port, segment_ports):
         self.common_port = common_port
         self.segment_ports = segment_ports
+        GPIO.setup(common_port, GPIO.OUT)
         for p in self.segment_ports:
 	        print(p)
+            GPIO.setup(p, GPIO.OUT)
+        self.hideCharacter()
 
     def __del__(self):
         print("destractor")
+        self.hideCharacter()
         GPIO.cleanup(self.common_port)
+        for p in self.segment_ports:
+            GPIO.cleanup(p)
 
     def showCharacter(self, char):
         if char not in character_pattern:
+            self.hideCharacter()
             return
 
         GPIO.output(self.common_port, False)
@@ -65,11 +75,11 @@ class NumberDisplay(threading.Thread):
 
     def run(self):
         while True:
-            print("run")
+            #print("run")
             with self.lock:
                 characters = self.characters
                 
-            print(characters)
+            #print(characters)
             for segment, char in zip(self.seven_segments, characters[::-1]):
                 # print(segment)
                 # print(char)
